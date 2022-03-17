@@ -1,3 +1,4 @@
+#%%
 import random
 import numpy as np
 from scipy import rand
@@ -228,3 +229,4 @@ class WindyShortcutEnvironment(Environment):
         s = self.s.copy()
         s[self.y, self.x] = 'p'
         print(s.tobytes().decode('utf-8'))
+# %%

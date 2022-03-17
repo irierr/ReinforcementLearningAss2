@@ -1,5 +1,5 @@
 # Write your experiments in here! You can use the plotting helper functions from the previous assignment if you want.
-#%%
+
 from ShortCutEnvironment import *
 from ShortCutAgents import *
 
@@ -27,4 +27,4 @@ def main():
 if __name__ == '__main__':
     main()
 
-# %%
+

@@ -1,11 +1,9 @@
 import time
-
-from ShortCutEnvironment import *
-from ShortCutAgents import *
-from matplotlib import colors
+from multiprocessing import Pool, cpu_count
 import matplotlib.pyplot as plt
-from multiprocessing import Pool
-from multiprocessing.pool import ApplyResult
+from matplotlib.colors import ListedColormap
+from ShortCutAgents import *
+from ShortCutEnvironment import *
 
 
 def plot_path(q_values, start_point, end_point, file_name):
@@ -29,7 +27,7 @@ def plot_path(q_values, start_point, end_point, file_name):
     plt.hlines(y=np.arange(0, 12)+0.5, xmin=np.full(12, 0)-0.5, xmax=np.full(12, 12)-0.5, color='black')
     plt.vlines(x=np.arange(0, 12)+0.5, ymin=np.full(12, 0)-0.5, ymax=np.full(12, 12)-0.5, color='black')
 
-    col_map = colors.ListedColormap(['white', 'yellow', 'blue', 'green'])  # Set colors
+    col_map = ListedColormap(['white', 'yellow', 'blue', 'green'])  # Set colors
     ax.matshow(path, cmap=col_map)
 
     # Remove axis
@@ -77,49 +75,43 @@ def run_repetitions(n_rep, n_episodes, epsilon, alpha, method):
     return np.mean(rewards, axis=0)
 
 
-def run_experiment(n_rep, n_episodes, epsilon, alpha_values, method):
-    results = np.zeros(shape=(len(alpha_values), n_episodes))
-    for i, a in enumerate(alpha_values):
-        results[i] = run_repetitions(n_rep, n_episodes, epsilon, a, method)
-        print("1 done!")
-    return results
-
-
-def run_experiment_parallel(n_rep, n_episodes, epsilon, alpha_values, method):
-    results = np.zeros(shape=(len(alpha_values)), dtype=ApplyResult)
-    pool = Pool()
-    for i, a in enumerate(alpha_values):
-        results[i] = pool.apply_async(run_repetitions, args=(n_rep, n_episodes, epsilon, a, method), callback=done)
+def run_repetitions_parallel(n_rep, n_episodes, epsilon, alpha, method):
+    results = []
+    pool = Pool(processes=cpu_count())
+    for i in range(n_rep):
+        SCE = ShortcutEnvironment()
+        n_states = SCE.state_size()
+        n_actions = len(SCE.possible_actions())
+        agent = method(n_actions, n_states, epsilon, alpha)
+        results.append(pool.apply_async(run_episodes, args=(n_episodes, SCE, agent)))
     pool.close()
     pool.join()
-    return np.array([r.get() for r in results])
+    return np.mean([r.get() for r in results], axis=0)
 
 
-global done_count
-
-
-def done(result):
-    global done_count
-    done_count += 1
-    print(f"{done_count} done in parallel!")
+def run_experiment(n_rep, n_episodes, epsilon, alpha_values, method, parallel=True):
+    results = np.zeros(shape=(len(alpha_values), n_episodes))
+    for i, a in enumerate(alpha_values):
+        if parallel:
+            results[i] = run_repetitions_parallel(n_rep, n_episodes, epsilon, a, method)
+        else:
+            results[i] = run_repetitions(n_rep, n_episodes, epsilon, a, method)
+        print(f"alpha value {a} done!")
+    return results
 
 
 def main():
     epsilon = 0.1
-    alpha_values = [0.01, 0.1, 0.5, 0.9]
-    global done_count
-    done_count = 0
-    # start = time.time()
-    # QLA_Rewards = run_experiment(100, 100, epsilon, alpha_values, QLearningAgent)
-    # end = time.time()
-    # print(end-start)
+    alphas = [0.01, 0.1, 0.5, 0.9]
+    n_episodes = 1000
+    n_reps = 100
 
     start = time.time()
-    QLA_Rewards_parallel = run_experiment_parallel(100, 1000, epsilon, alpha_values, QLearningAgent)
+    QLA_Rewards = run_experiment(n_reps, n_episodes, epsilon, alphas, QLearningAgent, parallel=True)
     end = time.time()
-    print(end-start)
+    print(f"Whole experiment done in: {end - start}")
 
-    plot_reward_graph(QLA_Rewards_parallel, alpha_values, "QLA")
+    plot_reward_graph(QLA_Rewards, alphas, "QLA")
 
     # q_values_2d = np.argmax(QLA_Q, axis=1).reshape((12, 12))
     # plot_path(q_values_2d, [9, 2], [8, 8], "q_path")

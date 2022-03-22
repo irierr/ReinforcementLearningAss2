@@ -24,11 +24,14 @@ def plot_path(q_values, start_point, end_point, file_name):
     # Show grid
     plt.hlines(y=np.arange(0, 12)+0.5, xmin=np.full(12, 0)-0.5, xmax=np.full(12, 12)-0.5, color='black')
     plt.vlines(x=np.arange(0, 12)+0.5, ymin=np.full(12, 0)-0.5, ymax=np.full(12, 12)-0.5, color='black')
+
+    col_map = colors.ListedColormap(['white', 'yellow', 'blue', 'green'])  # Set colors
+    ax.matshow(path, cmap=col_map)
+
     # Remove axis
     ax.get_xaxis().set_ticks([])
     ax.get_yaxis().set_ticks([])
-    col_map = colors.ListedColormap(['white', 'yellow', 'blue', 'green'])  # Set colors
-    ax.matshow(path, cmap=col_map)
+
     plt.savefig(file_name)
 
 

@@ -32,33 +32,62 @@ def plot_path(q_values, start_point, end_point, file_name):
     ax.get_xaxis().set_ticks([])
     ax.get_yaxis().set_ticks([])
 
-    plt.savefig(file_name)
+    plt.savefig(f"plots/{file_name}.png")
 
 
-def run_repetitions(n_episodes, epsilon, alpha):
-    SCE = ShortcutEnvironment()
-    n_states = SCE.state_size()
-    n_actions = len(SCE.possible_actions())
-    QLA = QLearningAgent(n_actions, n_states, epsilon, alpha)
+def plot_reward_graph(rewards, alpha_values, file_name):
+    fig, ax = plt.subplots()
+    ax.set_xlabel('Episode')
+    ax.set_ylabel('Cumulative Reward')
+    for i, r in enumerate(rewards):
+        ax.plot(r, label=alpha_values[i])
+    ax.legend(title="α values")
+    fig.savefig(f"plots/{file_name}.png")
+
+
+def run_episodes(n_episodes, environment, agent):
+    rewards = np.zeros(shape=n_episodes)
     for i in range(n_episodes):
-        current_state = SCE.state()
-        while not SCE.done():
-            a = QLA.select_action(current_state)
-            r = SCE.step(a)
-            next_state = SCE.state()
-            QLA.update(current_state, next_state, a, r)
+        current_state = environment.state()
+        cum_reward = 0
+        while not environment.done():
+            a = agent.select_action(current_state)
+            r = environment.step(a)
+            cum_reward += r
+            next_state = environment.state()
+            agent.update(current_state, next_state, a, r)
             current_state = next_state
-        SCE.reset()
-    return QLA.Q
+        environment.reset()
+        rewards[i] = cum_reward
+    return rewards
+
+
+def run_repetitions(n_rep, n_episodes, epsilon, alpha, method):
+    rewards = np.zeros(shape=(n_rep, n_episodes))
+    for i in range(n_rep):
+        SCE = ShortcutEnvironment()
+        n_states = SCE.state_size()
+        n_actions = len(SCE.possible_actions())
+        agent = method(n_actions, n_states, epsilon, alpha)
+        rewards[i] = run_episodes(n_episodes, SCE, agent)
+    return np.mean(rewards, axis=0)
+
+
+def run_experiment(n_rep, n_episodes, epsilon, alpha_values, method):
+    results = np.zeros(shape=(len(alpha_values), n_episodes))
+    for i, a in enumerate(alpha_values):
+        results[i] = run_repetitions(n_rep, n_episodes, epsilon, a, method)
+    return results
 
 
 def main():
     epsilon = 0.1
-    alpha = 0.1
-    QLA_Q = run_repetitions(10000, epsilon, alpha)
+    alpha_values = [0.01, 0.1, 0.5, 0.9]
+    QLA_Rewards = run_experiment(100, 1000, epsilon, alpha_values, QLearningAgent)
+    plot_reward_graph(QLA_Rewards, alpha_values, "QLA")
 
-    q_values_2d = np.argmax(QLA_Q, axis=1).reshape((12, 12))
-    plot_path(q_values_2d, [9, 2], [8, 8], "path.png")
+    # q_values_2d = np.argmax(QLA_Q, axis=1).reshape((12, 12))
+    # plot_path(q_values_2d, [9, 2], [8, 8], "q_path")
 
 
 if __name__ == '__main__':

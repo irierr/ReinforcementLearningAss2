@@ -1,7 +1,11 @@
+import time
+
 from ShortCutEnvironment import *
 from ShortCutAgents import *
 from matplotlib import colors
 import matplotlib.pyplot as plt
+from multiprocessing import Pool
+from multiprocessing.pool import ApplyResult
 
 
 def plot_path(q_values, start_point, end_point, file_name):
@@ -77,14 +81,45 @@ def run_experiment(n_rep, n_episodes, epsilon, alpha_values, method):
     results = np.zeros(shape=(len(alpha_values), n_episodes))
     for i, a in enumerate(alpha_values):
         results[i] = run_repetitions(n_rep, n_episodes, epsilon, a, method)
+        print("1 done!")
     return results
+
+
+def run_experiment_parallel(n_rep, n_episodes, epsilon, alpha_values, method):
+    results = np.zeros(shape=(len(alpha_values)), dtype=ApplyResult)
+    pool = Pool()
+    for i, a in enumerate(alpha_values):
+        results[i] = pool.apply_async(run_repetitions, args=(n_rep, n_episodes, epsilon, a, method), callback=done)
+    pool.close()
+    pool.join()
+    return np.array([r.get() for r in results])
+
+
+global done_count
+
+
+def done(result):
+    global done_count
+    done_count += 1
+    print(f"{done_count} done in parallel!")
 
 
 def main():
     epsilon = 0.1
     alpha_values = [0.01, 0.1, 0.5, 0.9]
-    QLA_Rewards = run_experiment(100, 1000, epsilon, alpha_values, QLearningAgent)
-    plot_reward_graph(QLA_Rewards, alpha_values, "QLA")
+    global done_count
+    done_count = 0
+    # start = time.time()
+    # QLA_Rewards = run_experiment(100, 100, epsilon, alpha_values, QLearningAgent)
+    # end = time.time()
+    # print(end-start)
+
+    start = time.time()
+    QLA_Rewards_parallel = run_experiment_parallel(100, 100, epsilon, alpha_values, QLearningAgent)
+    end = time.time()
+    print(end-start)
+
+    plot_reward_graph(QLA_Rewards_parallel, alpha_values, "QLA")
 
     # q_values_2d = np.argmax(QLA_Q, axis=1).reshape((12, 12))
     # plot_path(q_values_2d, [9, 2], [8, 8], "q_path")

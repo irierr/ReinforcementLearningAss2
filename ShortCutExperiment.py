@@ -115,7 +115,7 @@ def main():
     # print(end-start)
 
     start = time.time()
-    QLA_Rewards_parallel = run_experiment_parallel(100, 100, epsilon, alpha_values, QLearningAgent)
+    QLA_Rewards_parallel = run_experiment_parallel(100, 1000, epsilon, alpha_values, QLearningAgent)
     end = time.time()
     print(end-start)
 

@@ -42,7 +42,7 @@ def plot_reward_graph(rewards, alpha_values, file_name):
     for i, r in enumerate(rewards):
         ax.plot(r, label=alpha_values[i])
     ax.legend(title="α values")
-    fig.savefig(f"plots/{file_name}.png")
+    fig.savefig(f"plots/{file_name}.png", dpi=300)
 
 
 def run_episodes(n_episodes, environment, agent):

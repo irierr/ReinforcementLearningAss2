@@ -4,38 +4,47 @@ import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap
 from ShortCutAgents import *
 from ShortCutEnvironment import *
+from tqdm import tqdm
 
 
-def plot_path(q_values, start_points, end_point, file_name):
-    path = np.zeros(shape=q_values.shape)
-    for start_point in start_points:
-        curr_point = start_point.copy()
-        path[curr_point[0], curr_point[1]] = 2  # Set start point of path
-        while curr_point != end_point:  # Follows path until end point reached
-            if q_values[curr_point[0], curr_point[1]] == 0:  # Up
-                curr_point[0] -= 1
-            elif q_values[curr_point[0], curr_point[1]] == 1:  # Down
-                curr_point[0] += 1
-            elif q_values[curr_point[0], curr_point[1]] == 2:  # Left
-                curr_point[1] -= 1
-            elif q_values[curr_point[0], curr_point[1]] == 3:  # Right
-                curr_point[1] += 1
-            path[curr_point[0], curr_point[1]] = 1  # Update path
-    path[end_point[0], end_point[1]] = 3  # Set end point of path
-
+def plot_path(q_values, start_points, end_point, file_name, windy):
     fig, ax = plt.subplots()
     # Show grid
-    plt.hlines(y=np.arange(0, 12)+0.5, xmin=np.full(12, 0)-0.5, xmax=np.full(12, 12)-0.5, color='black')
-    plt.vlines(x=np.arange(0, 12)+0.5, ymin=np.full(12, 0)-0.5, ymax=np.full(12, 12)-0.5, color='black')
+    plt.hlines(y=np.arange(0, 12) + 0.5, xmin=np.full(12, 0) - 0.5, xmax=np.full(12, 12) - 0.5, color='black')
+    plt.vlines(x=np.arange(0, 12) + 0.5, ymin=np.full(12, 0) - 0.5, ymax=np.full(12, 12) - 0.5, color='black')
+    path = np.zeros(shape=(12, 12))
+
+    if not windy:
+        q_max = np.argmax(q_values, axis=1).reshape((12, 12))
+        for start_point in start_points:
+            curr_point = start_point.copy()
+            path[curr_point[0], curr_point[1]] = 2  # Set start point of path
+            while curr_point != end_point:  # Follows path until end point reached
+                if q_max[curr_point[0], curr_point[1]] == 0:  # Up
+                    curr_point[0] -= 1
+                elif q_max[curr_point[0], curr_point[1]] == 1:  # Down
+                    curr_point[0] += 1
+                elif q_max[curr_point[0], curr_point[1]] == 2:  # Left
+                    curr_point[1] -= 1
+                elif q_max[curr_point[0], curr_point[1]] == 3:  # Right
+                    curr_point[1] += 1
+                path[curr_point[0], curr_point[1]] = 1  # Update path
+        path[end_point[0], end_point[1]] = 3  # Set end point of path
+
+    fig.subplots_adjust(bottom=0, top=1, left=0, right=0)
 
     col_map = ListedColormap(['white', 'yellow', 'blue', 'green'])  # Set colors
     ax.matshow(path, cmap=col_map)
+
+    # Add action labels
+    for (i, j), z in np.ndenumerate(format_greedy_actions(q_values)):
+        ax.text(j, i, z, ha='center', va='center')
 
     # Remove axis
     ax.get_xaxis().set_ticks([])
     ax.get_yaxis().set_ticks([])
 
-    plt.savefig(f"plots/{file_name}.png")
+    plt.savefig(f"plots/{file_name}.png", dpi=300)
 
 
 def plot_reward_graph(rewards, alpha_values, file_name):
@@ -50,7 +59,7 @@ def plot_reward_graph(rewards, alpha_values, file_name):
 
 def run_episodes(n_episodes, environment, agent):
     rewards = np.zeros(shape=n_episodes)
-    for i in range(n_episodes):
+    for i in tqdm(range(n_episodes)):
         current_state = environment.state()
         cum_reward = 0
         while not environment.done():
@@ -100,6 +109,17 @@ def run_experiment(n_rep, n_episodes, epsilon, alpha_values, agent, environment,
     return means
 
 
+def format_greedy_actions(Q):
+    greedy_actions = np.argmax(Q, 1).reshape((12, 12))
+    print_string = np.zeros((12, 12), dtype=str)
+    print_string[greedy_actions == 0] = '↑'
+    print_string[greedy_actions == 1] = '↓'
+    print_string[greedy_actions == 2] = '←'
+    print_string[greedy_actions == 3] = '→'
+    print_string[np.max(Q, 1).reshape((12, 12)) == 0] = ' '
+    return print_string
+
+
 def main():
     epsilon = 0.1
     # alphas = [0.01, 0.1, 0.5, 0.9]
@@ -122,18 +142,21 @@ def main():
     agents_names = ['Q-Learning', 'SARSA', 'Expected_SARSA']
     environments = [ShortcutEnvironment, WindyShortcutEnvironment]
     environment_names = ['Shortcut', 'Windy_Shortcut']
+    windy = False
     for a in range(len(agents)):
         for e in range(len(environments)):
-            if a == ExpectedSARSAAgent and e == WindyShortcutEnvironment:
-                continue
             an, en = agents_names[a], environment_names[e]
+            if an == 'Expected_SARSA' and en == 'Windy_Shortcut':
+                continue
             print(an, en)
             env = environments[e]()
             agent = agents[a](len(env.possible_actions()), env.state_size(), epsilon, alpha)
             _ = run_episodes(n_episodes, env, agent)
-            q_values_2d = np.argmax(agent.Q, axis=1).reshape((12, 12))
-            plot_path(q_values_2d, [[9, 2], [2, 2]], [8, 8], "q_path")
-            np.save(f"Q_Arrays/{an}_{en}", q_values_2d)
+            if en == 'Windy_Shortcut':
+                windy = True
+            plot_path(agent.Q, [[9, 2], [2, 2]], [8, 8], f"{an}_{en}_q_path", windy=windy)
+            windy = False
+            np.save(f"Q_Arrays/{an}_{en}", agent.Q)
     end = time.time()
     print(f"Whole experiment done in: {end - start}")
 

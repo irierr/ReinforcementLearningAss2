@@ -16,7 +16,7 @@ class Agent(object):
         p = np.random.uniform()
         if p <= 1 - self.epsilon:
             choices = np.argwhere(Q == np.max(Q)).flatten()
-            a = np.random.choice(choices)  # Replace this with correct action selection
+            a = np.random.choice(choices)
         else:
             choices = np.argwhere(Q != np.max(Q)).flatten()
             if choices.size > 0:

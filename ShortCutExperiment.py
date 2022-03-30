@@ -45,7 +45,7 @@ def plot_path(q_values, start_points, end_point, file_name, windy):
     ax.get_xaxis().set_ticks([])
     ax.get_yaxis().set_ticks([])
 
-    plt.savefig(f"plots/{file_name}.png", dpi=300)
+    plt.savefig(f"plots/paths/{file_name}.png", dpi=300)
 
 
 def format_greedy_actions(Q):
@@ -66,7 +66,7 @@ def plot_reward_graph(rewards, alpha_values, file_name):
     for i, r in enumerate(rewards):
         ax.plot(r, label=alpha_values[i])
     ax.legend(title="α values")
-    fig.savefig(f"plots/{file_name}.png", dpi=300)
+    fig.savefig(f"plots/rewards/{file_name}.png", dpi=300)
 
 
 def run_episodes(n_episodes, environment, agent, disable_tqdm=True):
@@ -130,11 +130,11 @@ def main():
     agents_names = ['Q-Learning', 'SARSA', 'Expected_SARSA']
     rewards = {}
     start = time.time()
-    # for a in range(len(agents)):
-    #     an = agents_names[a]
-    #     rewards[an] = run_experiment(n_reps, n_episodes, epsilon, alphas, agents[a], ShortcutEnvironment)
-    #     plot_reward_graph(rewards[an], alphas, f"{an}_rewards")
-    #     np.save(f"reward_arrays/{an}", rewards[an])
+    for a in range(len(agents)):
+        an = agents_names[a]
+        rewards[an] = run_experiment(n_reps, n_episodes, epsilon, alphas, agents[a], ShortcutEnvironment)
+        plot_reward_graph(rewards[an], alphas, f"{an}_rewards")
+        np.save(f"arrays/reward_arrays/{an}", rewards[an])
 
     # Q(s, a) plots
     alpha = 0.1
@@ -154,7 +154,7 @@ def main():
                 windy = True
             plot_path(agent.Q, [[9, 2], [2, 2]], [8, 8], f"{an}_{en}_q_path", windy=windy)
             windy = False
-            np.save(f"Q_Arrays/{an}_{en}", agent.Q)
+            np.save(f"arrays/Q_Arrays/{an}_{en}", agent.Q)
     end = time.time()
     print(f"Whole experiment done in: {end - start}")
 

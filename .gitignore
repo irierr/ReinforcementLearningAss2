@@ -130,6 +130,3 @@ dmypy.json
 
 # JetBrains Files
 .idea
-
-# Project output files
-*.png
